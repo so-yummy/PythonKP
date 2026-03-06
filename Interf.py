@@ -8,7 +8,7 @@ from Func import Generator
 from Exp import Experiment
 import Graph
 from RSA import RSA
-
+from TimingAttack import TimingAttack      
 
 # Интерфейс
 class Gui:
@@ -20,9 +20,9 @@ class Gui:
         self.root.geometry("520x550")   #Размер
         self.res = None                 #Хранение результатов
 
-        self.rsa = None    #Параметры RSA
-        self.params = None
-        
+        self.rsa = None                 #Параметры RSA
+        self.params = None              
+
         # Параметры эксперимента
         ttk.Label(root, text="Размер ключа:").pack(pady=5)    #Подпись
         self.bitsentry = ttk.Entry(root)    # Поле ввода
@@ -33,7 +33,7 @@ class Gui:
         self.sampentry.pack()
 
         # Переменная выбора типа простых
-        self.prime_type = tk.StringVar(value="normal")
+        self.prtype = tk.StringVar(value="normal")
 
         ttk.Label(root, text="Тип простых чисел:").pack(pady=5)
 
@@ -42,9 +42,9 @@ class Gui:
         radfr.pack(pady=5)
 
         #кнопки выбора
-        ttk.Radiobutton(radfr, text="Обычные", variable=self.prime_type, value="normal").pack(side="left", padx=10)
-        ttk.Radiobutton(radfr, text="Близкие", variable=self.prime_type, value="close").pack(side="left", padx=10)
-        ttk.Radiobutton(radfr, text="Сильные", variable=self.prime_type, value="strong").pack(side="left", padx=10)
+        ttk.Radiobutton(radfr, text="Обычные", variable=self.prtype, value="normal").pack(side="left", padx=10)
+        ttk.Radiobutton(radfr, text="Близкие", variable=self.prtype, value="close").pack(side="left", padx=10)
+        ttk.Radiobutton(radfr, text="Сильные", variable=self.prtype, value="strong").pack(side="left", padx=10)
 
         ttk.Button(root, text="Запустить эксперимент", command=self.RunExper).pack(pady=10)     #Запуск эксперимента
 
@@ -70,12 +70,18 @@ class Gui:
     #Выполнение эксперимента в отдельном потоке
     def ExperThread(self):
         try:
+            # Проверка на генерацию
+            if self.rsa is None:
+                messagebox.showwarning("Сначала сгенерируйте ключ")
+                return
+
+            rsa = self.rsa
             # Получение значений
             bit = int(self.bitsentry.get())     #Размер ключа
             samp = int(self.sampentry.get())    #Количество экспериментов
 
             #Получение значений переключателя
-            ptype = self.prime_type.get()  # Получение выбранного типа простых
+            ptype = self.prtype.get()  # Получение выбранного типа простых
 
             close = (ptype == "close")  # Выбор близких простых
             strong = (ptype == "strong")  # Выбор сильных простых
@@ -83,17 +89,17 @@ class Gui:
             self.output.delete("1.0", tk.END)   #Очистка поля вывода
 
             #Вывод данных
-            rsa = RSA(bit, c=close, st=strong)
-            self.rsa = rsa
+            #rsa = RSA(bit, c=close, st=strong)
+            #self.rsa = rsa
 
-            self.output.insert(tk.END, "Сгенерированные параметры RSA:\n")
+            self.output.insert(tk.END, "Параметры RSA:\n")
 
             self.output.insert(tk.END, f"\np = {rsa.p}")
             self.output.insert(tk.END, f"\nq = {rsa.q}")
             self.output.insert(tk.END, f"\nn = {rsa.n}")
             self.output.insert(tk.END, f"\ne = {rsa.e}")
             self.output.insert(tk.END, f"\nd = {rsa.d}\n")
-            
+
             self.output.insert(tk.END, "Выполняется эксперимент...\n")  #Сообщение
 
             df = Experiment.run(samp=samp, bit=bit, c=close, st=strong) #Запуск эксперимента
@@ -132,6 +138,7 @@ class Gui:
 
         # Функция генерации числа
         def Generate():
+
             try:
                 bit = int(bitent.get())
 
@@ -147,10 +154,13 @@ class Gui:
                 output.delete("1.0", tk.END)    #Очистка окна ввода
                 #rsa = RSA(bit=bit, c=(type == "close"), st=(type == "strong"))
 
+                # Генерация RSA
                 rsa = RSA(bit)
+
+                # Сохранение ключа
                 self.rsa = rsa
                 self.params = {"n": rsa.n, "e": rsa.e, "d": rsa.d}
-                
+
                 output.insert(tk.END, f"p = {rsa.p}\nq = {rsa.q}\nn = {rsa.n}")
 
             except Exception as e:
@@ -164,13 +174,14 @@ class Gui:
         ttk.Button(btnfr, text="Отмена", command=genwin.destroy).pack(side="left", padx=10)     #Закрытие окна
 
     # Графики
-    def GraphWindow(self):
+    def GraphWindow(self, rsa=None):
 
         #Предупреждение если эксперимент не был выполнен
         if self.res is None:
             messagebox.showwarning("Сначала выполните эксперимент")
             return
 
+        # Предупреждение если нет ключа
         if self.rsa is None:
             messagebox.showwarning("Сначала выполните сгенерируйте ключ RSA")
             return
@@ -187,8 +198,11 @@ class Gui:
         #Вызов графика по всем экспериментам
         ttk.Button(graphwin, text="Все эксперименты", command=lambda: Graph.PlotExperiments(self.res)).pack(pady=5)
 
-        #Вызов графика атаки по времени
-        ttk.Button(graphwin, text="Атака по времени", command=lambda: Graph.PlotTimingAttack({"n": self.rsa.n, "e": self.rsa.e, "d": self.rsa.d})).pack(pady=5)
+        #ИЗМЕНЕНО: кнопка графика для атаки по времени
+        ttk.Button(
+            graphwin,
+            text="Атака по времени",
+            command=lambda: Graph.PlotTimingAttack({"n": self.rsa.n, "e": self.rsa.e, "d": self.rsa.d})).pack(pady=5)
 
         #Не рабочий
         #ttk.Button(graphwin, text="Сравнение с теорией", command=lambda: Graph.PlotWithTheory(self.result)).pack(pady=5)
@@ -197,5 +211,4 @@ class Gui:
 if __name__ == "__main__":
     root = tk.Tk()  #Создание основного окна
     app = Gui(root)     #Создание объекта интерфейса
-
     root.mainloop()     #Запуск обработки событий
