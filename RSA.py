@@ -2,6 +2,7 @@
 
 import random
 from Func import Generator
+import math
 
 #Создание параметров RSA
 class RSA:
@@ -37,3 +38,4 @@ class RSA:
 
         # Закрытая экспонента
         self.d = pow(self.e, -1, phi)
+
