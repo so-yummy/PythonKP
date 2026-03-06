@@ -20,6 +20,9 @@ class Gui:
         self.root.geometry("520x550")   #Размер
         self.res = None                 #Хранение результатов
 
+        self.rsa = None    #Параметры RSA
+        self.params = None
+        
         # Параметры эксперимента
         ttk.Label(root, text="Размер ключа:").pack(pady=5)    #Подпись
         self.bitsentry = ttk.Entry(root)    # Поле ввода
@@ -78,6 +81,19 @@ class Gui:
             strong = (ptype == "strong")  # Выбор сильных простых
 
             self.output.delete("1.0", tk.END)   #Очистка поля вывода
+
+            #Вывод данных
+            rsa = RSA(bit, c=close, st=strong)
+            self.rsa = rsa
+
+            self.output.insert(tk.END, "Сгенерированные параметры RSA:\n")
+
+            self.output.insert(tk.END, f"\np = {rsa.p}")
+            self.output.insert(tk.END, f"\nq = {rsa.q}")
+            self.output.insert(tk.END, f"\nn = {rsa.n}")
+            self.output.insert(tk.END, f"\ne = {rsa.e}")
+            self.output.insert(tk.END, f"\nd = {rsa.d}\n")
+            
             self.output.insert(tk.END, "Выполняется эксперимент...\n")  #Сообщение
 
             df = Experiment.run(samp=samp, bit=bit, c=close, st=strong) #Запуск эксперимента
@@ -129,7 +145,12 @@ class Gui:
 
                 #Вывод результата
                 output.delete("1.0", tk.END)    #Очистка окна ввода
-                rsa = RSA(bit=bit, c=(type == "close"), st=(type == "strong"))
+                #rsa = RSA(bit=bit, c=(type == "close"), st=(type == "strong"))
+
+                rsa = RSA(bit)
+                self.rsa = rsa
+                self.params = {"n": rsa.n, "e": rsa.e, "d": rsa.d}
+                
                 output.insert(tk.END, f"p = {rsa.p}\nq = {rsa.q}\nn = {rsa.n}")
 
             except Exception as e:
@@ -150,6 +171,10 @@ class Gui:
             messagebox.showwarning("Сначала выполните эксперимент")
             return
 
+        if self.rsa is None:
+            messagebox.showwarning("Сначала выполните сгенерируйте ключ RSA")
+            return
+
         graphwin = tk.Toplevel(self.root)
         graphwin.title("Графики")
         graphwin.geometry("300x220")
@@ -162,6 +187,9 @@ class Gui:
         #Вызов графика по всем экспериментам
         ttk.Button(graphwin, text="Все эксперименты", command=lambda: Graph.PlotExperiments(self.res)).pack(pady=5)
 
+        #Вызов графика атаки по времени
+        ttk.Button(graphwin, text="Атака по времени", command=lambda: Graph.PlotTimingAttack({"n": self.rsa.n, "e": self.rsa.e, "d": self.rsa.d})).pack(pady=5)
+
         #Не рабочий
         #ttk.Button(graphwin, text="Сравнение с теорией", command=lambda: Graph.PlotWithTheory(self.result)).pack(pady=5)
 
@@ -169,4 +197,5 @@ class Gui:
 if __name__ == "__main__":
     root = tk.Tk()  #Создание основного окна
     app = Gui(root)     #Создание объекта интерфейса
+
     root.mainloop()     #Запуск обработки событий
