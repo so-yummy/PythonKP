@@ -24,3 +24,16 @@ class RSA:
 
         #Вычисление модуля RSA
         self.n = self.p * self.q
+
+        # Вычисление функции Эйлера
+        phi = (self.p - 1) * (self.q - 1)
+
+        # Открытая экспонента
+        self.e = 65537
+
+        # Проверка взаимной простоты
+        while math.gcd(self.e, phi) != 1:
+            self.e += 2
+
+        # Закрытая экспонента
+        self.d = pow(self.e, -1, phi)
