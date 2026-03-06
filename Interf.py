@@ -8,6 +8,7 @@ from Func import Generator
 from Exp import Experiment
 import Graph
 from RSA import RSA
+from errors import InputValidationError, safe_int
 
 
 # Интерфейс
@@ -68,8 +69,8 @@ class Gui:
     def ExperThread(self):
         try:
             # Получение значений
-            bit = int(self.bitsentry.get())     #Размер ключа
-            samp = int(self.sampentry.get())    #Количество экспериментов
+            bit = safe_int(self.bitsentry.get(), "Размер ключа", min_value=8, max_value=4096)     #Размер ключа
+            samp = safe_int(self.sampentry.get(), "Количество экспериментов", min_value=1, max_value=1000)    #Количество экспериментов
 
             #Получение значений переключателя
             ptype = self.prime_type.get()  # Получение выбранного типа простых
@@ -89,7 +90,10 @@ class Gui:
             self.output.insert(tk.END, str(df))         #Вывод таблицы
 
         #Ошибки
-        except Exception as e: messagebox.showerror("Ошибка", str(e))
+        except InputValidationError as e:
+            messagebox.showerror("Ошибка ввода", str(e))
+        except Exception as e:
+            messagebox.showerror("Неожиданная ошибка", str(e))
 
     # Генерация
     def GenWindow(self):
@@ -117,7 +121,7 @@ class Gui:
         # Функция генерации числа
         def Generate():
             try:
-                bit = int(bitent.get())
+                bit = safe_int(bitent.get(), "Размер числа в битах", min_value=8, max_value=4096)
 
                 #Выбор метода генерации
                 if typeprine.get() == "normal":
@@ -129,11 +133,12 @@ class Gui:
 
                 #Вывод результата
                 output.delete("1.0", tk.END)    #Очистка окна ввода
-                rsa = RSA(bit=bit, c=(type == "close"), st=(type == "strong"))
-                output.insert(tk.END, f"p = {rsa.p}\nq = {rsa.q}\nn = {rsa.n}")
+                output.insert(tk.END, f"{title}:\n{pr}")
 
+            except InputValidationError as e:
+                messagebox.showerror("Ошибка ввода", str(e))
             except Exception as e:
-                messagebox.showerror("Ошибка", str(e))
+                messagebox.showerror("Неожиданная ошибка", str(e))
 
         #Фрейм для кнопок
         btnfr = ttk.Frame(genwin)
